@@ -11,8 +11,8 @@ final class OverlayPanel: NSPanel {
 
         self.setFrame(screen.frame, display: false)
         level = .screenSaver
-        backgroundColor = .black
-        isOpaque = true
+        backgroundColor = .clear
+        isOpaque = false
         hasShadow = false
         ignoresMouseEvents = false
         collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
