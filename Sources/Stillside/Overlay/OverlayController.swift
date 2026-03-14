@@ -1,18 +1,18 @@
 import AppKit
 
 final class OverlayController {
-    private var panel: OverlayPanel?
-    private var animationView: CRTShutdownView?
+    private var panels: [OverlayPanel] = []
+    private var animationViews: [CRTShutdownView] = []
     private let monitorIndex: Int
 
-    var isActive: Bool { panel != nil }
+    var isActive: Bool { !panels.isEmpty }
 
     init(monitorIndex: Int) {
         self.monitorIndex = monitorIndex
     }
 
     func toggle() {
-        if panel != nil {
+        if isActive {
             hide()
         } else {
             show()
@@ -20,33 +20,40 @@ final class OverlayController {
     }
 
     private func show() {
-        guard let screen = MonitorManager.targetScreen(monitorIndex: monitorIndex) else {
+        guard let screens = MonitorManager.targetScreens(monitorIndex: monitorIndex),
+              !screens.isEmpty else {
             NSSound.beep()
             return
         }
 
-        let overlay = OverlayPanel(screen: screen)
-        overlay.backgroundColor = .clear
-        panel = overlay
+        for screen in screens {
+            let overlay = OverlayPanel(screen: screen)
+            overlay.backgroundColor = .clear
+            panels.append(overlay)
 
-        let crtView = CRTShutdownView(frame: overlay.contentView!.bounds)
-        crtView.autoresizingMask = [.width, .height]
-        overlay.contentView?.addSubview(crtView)
-        animationView = crtView
+            let crtView = CRTShutdownView(frame: overlay.contentView!.bounds)
+            crtView.autoresizingMask = [.width, .height]
+            overlay.contentView?.addSubview(crtView)
+            animationViews.append(crtView)
 
-        overlay.orderFrontRegardless()
+            overlay.orderFrontRegardless()
 
-        crtView.startAnimation { [weak self] in
-            self?.animationView?.removeFromSuperview()
-            self?.animationView = nil
-            self?.panel?.backgroundColor = .black
+            crtView.startAnimation { [weak crtView, weak overlay] in
+                crtView?.removeFromSuperview()
+                overlay?.backgroundColor = .black
+            }
         }
     }
 
     private func hide() {
-        animationView?.stopAnimation()
-        animationView = nil
-        panel?.close()
-        panel = nil
+        for view in animationViews {
+            view.stopAnimation()
+        }
+        animationViews.removeAll()
+
+        for panel in panels {
+            panel.close()
+        }
+        panels.removeAll()
     }
 }
