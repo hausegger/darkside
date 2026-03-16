@@ -3,24 +3,24 @@ import AppKit
 final class OverlayController {
     private var panels: [OverlayPanel] = []
     private var animationViews: [CRTShutdownView] = []
-    private let monitorIndex: Int
+    private let monitor: Int
 
     var isActive: Bool { !panels.isEmpty }
 
-    init(monitorIndex: Int) {
-        self.monitorIndex = monitorIndex
+    init(monitor: Int) {
+        self.monitor = monitor
     }
 
     func toggle() {
         if isActive {
             hide()
         } else {
-            show()
+            show() 
         }
     }
 
     private func show() {
-        guard let screens = MonitorManager.targetScreens(monitorIndex: monitorIndex),
+        guard let screens = MonitorManager.targetScreens(monitor: monitor),
               !screens.isEmpty else {
             NSSound.beep()
             return
@@ -38,14 +38,15 @@ final class OverlayController {
 
             overlay.orderFrontRegardless()
 
-            crtView.startAnimation { [weak crtView, weak overlay] in
+            let displayID = MonitorManager.screenDisplayID(screen)
+            crtView.startAnimation(displayID: displayID) { [weak crtView, weak overlay] in
                 crtView?.removeFromSuperview()
                 overlay?.backgroundColor = .black
             }
         }
     }
 
-    private func hide() {
+    func hide() {
         for view in animationViews {
             view.stopAnimation()
         }

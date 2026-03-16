@@ -4,6 +4,8 @@ final class CRTShutdownView: NSView {
     private var displayLink: CVDisplayLink?
     private var startTime: CFTimeInterval = 0
     private var completion: (() -> Void)?
+    private var isFinished = false
+    private var targetDisplayID: CGDirectDisplayID = CGMainDisplayID()
 
     // Animation timing (seconds)
     private let verticalCloseDuration: CFTimeInterval = 0.35
@@ -21,15 +23,16 @@ final class CRTShutdownView: NSView {
         fatalError()
     }
 
-    func startAnimation(completion: @escaping () -> Void) {
+    func startAnimation(displayID: CGDirectDisplayID = CGMainDisplayID(), completion: @escaping () -> Void) {
         self.completion = completion
+        self.targetDisplayID = displayID
         startTime = CACurrentMediaTime()
 
         var link: CVDisplayLink?
-        CVDisplayLinkCreateWithActiveCGDisplays(&link)
+        CVDisplayLinkCreateWithCGDisplay(displayID, &link)
         guard let link else { return }
 
-        let selfPtr = UnsafeMutableRawPointer(Unmanaged.passRetained(self).toOpaque())
+        let selfPtr = UnsafeMutableRawPointer(Unmanaged.passUnretained(self).toOpaque())
         CVDisplayLinkSetOutputCallback(link, { _, _, _, _, _, userInfo -> CVReturn in
             guard let userInfo else { return kCVReturnError }
             let view = Unmanaged<CRTShutdownView>.fromOpaque(userInfo).takeUnretainedValue()
@@ -104,9 +107,14 @@ final class CRTShutdownView: NSView {
             // Done — fill black
             ctx.setFillColor(NSColor.black.cgColor)
             ctx.fill(bounds)
-            stopAnimation()
-            completion?()
-            completion = nil
+            if !isFinished {
+                isFinished = true
+                DispatchQueue.main.async { [weak self] in
+                    self?.stopAnimation()
+                    self?.completion?()
+                    self?.completion = nil
+                }
+            }
         }
     }
 
