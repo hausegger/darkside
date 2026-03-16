@@ -5,7 +5,6 @@ final class CRTShutdownView: NSView {
     private var startTime: CFTimeInterval = 0
     private var completion: (() -> Void)?
     private var isFinished = false
-    private var targetDisplayID: CGDirectDisplayID = CGMainDisplayID()
 
     // Animation timing (seconds)
     private let verticalCloseDuration: CFTimeInterval = 0.35
@@ -25,19 +24,18 @@ final class CRTShutdownView: NSView {
 
     func startAnimation(displayID: CGDirectDisplayID = CGMainDisplayID(), completion: @escaping () -> Void) {
         self.completion = completion
-        self.targetDisplayID = displayID
         startTime = CACurrentMediaTime()
 
         var link: CVDisplayLink?
         CVDisplayLinkCreateWithCGDisplay(displayID, &link)
         guard let link else { return }
 
-        let selfPtr = UnsafeMutableRawPointer(Unmanaged.passUnretained(self).toOpaque())
+        let selfPtr = UnsafeMutableRawPointer(Unmanaged.passRetained(self).toOpaque())
         CVDisplayLinkSetOutputCallback(link, { _, _, _, _, _, userInfo -> CVReturn in
             guard let userInfo else { return kCVReturnError }
             let view = Unmanaged<CRTShutdownView>.fromOpaque(userInfo).takeUnretainedValue()
-            DispatchQueue.main.async {
-                view.needsDisplay = true
+            DispatchQueue.main.async { [weak view] in
+                view?.needsDisplay = true
             }
             return kCVReturnSuccess
         }, selfPtr)
@@ -47,10 +45,11 @@ final class CRTShutdownView: NSView {
     }
 
     func stopAnimation() {
-        if let link = displayLink {
-            CVDisplayLinkStop(link)
-        }
+        guard let link = displayLink else { return }
         displayLink = nil
+        CVDisplayLinkStop(link)
+        // Balance the passRetained in startAnimation
+        Unmanaged.passUnretained(self).release()
     }
 
     override func draw(_ dirtyRect: NSRect) {
@@ -89,7 +88,7 @@ final class CRTShutdownView: NSView {
             let lineHeight: CGFloat = 1.5
             let lineRect = CGRect(x: midX - lineWidth / 2, y: midY - lineHeight / 2, width: lineWidth, height: lineHeight)
 
-            drawGlow(ctx: ctx, rect: lineRect, intensity: 1.0 - progress * 0.3)
+            CRTEffects.drawGlow(ctx: ctx, rect: lineRect, intensity: 1.0 - progress * 0.3)
 
         } else if elapsed < totalDuration {
             // Phase 3: Dot fades out
@@ -101,7 +100,7 @@ final class CRTShutdownView: NSView {
             let dotSize: CGFloat = 3
             let dotRect = CGRect(x: midX - dotSize / 2, y: midY - dotSize / 2, width: dotSize, height: dotSize)
 
-            drawGlow(ctx: ctx, rect: dotRect, intensity: intensity * 0.7)
+            CRTEffects.drawGlow(ctx: ctx, rect: dotRect, intensity: intensity * 0.7)
 
         } else {
             // Done — fill black
@@ -116,22 +115,6 @@ final class CRTShutdownView: NSView {
                 }
             }
         }
-    }
-
-    private func drawGlow(ctx: CGContext, rect: CGRect, intensity: Double) {
-        let glowColor = NSColor(white: 0.7, alpha: intensity * 0.4)
-        let coreColor = NSColor(white: 0.7, alpha: intensity)
-
-        // Soft glow
-        ctx.saveGState()
-        ctx.setShadow(offset: .zero, blur: 15, color: glowColor.cgColor)
-        ctx.setFillColor(coreColor.cgColor)
-        ctx.fill(rect)
-        ctx.restoreGState()
-
-        // Bright core
-        ctx.setFillColor(coreColor.cgColor)
-        ctx.fill(rect)
     }
 
     private func easeInQuad(_ t: Double) -> Double {
