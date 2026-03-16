@@ -42,6 +42,7 @@ final class HotkeyManager {
         }
 
         guard let keyString = keyPart, let key = keyFromString(keyString) else { return nil }
+        guard !modifiers.isEmpty else { return nil }
         return (key, modifiers)
     }
 

@@ -28,18 +28,18 @@ struct TerminalPicker {
         render(title: title, items: items, selected: selected)
 
         while true {
-            let c = readChar()
+            guard let c = readChar() else { return nil }
             switch c {
             case 0x1B: // escape sequence
-                let next = readChar()
+                guard let next = readChar() else { return nil }
                 if next == 0x5B { // [
-                    let arrow = readChar()
+                    guard let arrow = readChar() else { return nil }
                     if arrow == 0x41 { // up
                         selected = max(0, selected - 1)
                     } else if arrow == 0x42 { // down
                         selected = min(items.count - 1, selected + 1)
                     }
-                } else if next == 0 || next == 0x1B {
+                } else if next == 0x1B {
                     return nil // bare Esc
                 }
             case 0x0A, 0x0D: // Enter
@@ -67,9 +67,10 @@ struct TerminalPicker {
         fflush(stdout)
     }
 
-    private static func readChar() -> UInt8 {
+    private static func readChar() -> UInt8? {
         var c: UInt8 = 0
-        read(STDIN_FILENO, &c, 1)
+        let n = read(STDIN_FILENO, &c, 1)
+        guard n > 0 else { return nil }
         return c
     }
 
