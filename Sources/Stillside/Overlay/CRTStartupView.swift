@@ -23,7 +23,9 @@ final class CRTStartupView: NSView {
     }
 
     func startAnimation(displayID: CGDirectDisplayID = CGMainDisplayID(), completion: @escaping () -> Void) {
+        stopAnimation()
         self.completion = completion
+        isFinished = false
         startTime = CACurrentMediaTime()
 
         var link: CVDisplayLink?
@@ -47,6 +49,7 @@ final class CRTStartupView: NSView {
     func stopAnimation() {
         guard let link = displayLink else { return }
         displayLink = nil
+        completion = nil
         CVDisplayLinkStop(link)
         Unmanaged.passUnretained(self).release()
     }
@@ -113,9 +116,9 @@ final class CRTStartupView: NSView {
             if !isFinished {
                 isFinished = true
                 DispatchQueue.main.async { [weak self] in
+                    let onComplete = self?.completion
                     self?.stopAnimation()
-                    self?.completion?()
-                    self?.completion = nil
+                    onComplete?()
                 }
             }
         }

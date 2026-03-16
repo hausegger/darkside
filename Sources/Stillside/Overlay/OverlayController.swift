@@ -33,9 +33,10 @@ final class OverlayController {
             overlay.backgroundColor = .clear
             panels.append(overlay)
 
-            let crtView = CRTShutdownView(frame: overlay.contentView!.bounds)
+            guard let contentView = overlay.contentView else { continue }
+            let crtView = CRTShutdownView(frame: contentView.bounds)
             crtView.autoresizingMask = [.width, .height]
-            overlay.contentView?.addSubview(crtView)
+            contentView.addSubview(crtView)
             animationViews.append(crtView)
 
             overlay.orderFrontRegardless()
@@ -72,12 +73,16 @@ final class OverlayController {
         for panel in closingPanels {
             panel.backgroundColor = .clear
 
-            let startupView = CRTStartupView(frame: panel.contentView!.bounds)
+            guard let contentView = panel.contentView else {
+                panel.close()
+                continue
+            }
+            let startupView = CRTStartupView(frame: contentView.bounds)
             startupView.autoresizingMask = [.width, .height]
-            panel.contentView?.addSubview(startupView)
+            contentView.addSubview(startupView)
             startupViews.append(startupView)
 
-            let displayID = MonitorManager.screenDisplayID(panel.screen!)
+            let displayID = panel.screen.map { MonitorManager.screenDisplayID($0) } ?? CGMainDisplayID()
             startupView.startAnimation(displayID: displayID) { [weak self, weak startupView, weak panel] in
                 startupView?.removeFromSuperview()
                 panel?.close()

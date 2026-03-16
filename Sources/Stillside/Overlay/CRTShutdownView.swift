@@ -23,7 +23,9 @@ final class CRTShutdownView: NSView {
     }
 
     func startAnimation(displayID: CGDirectDisplayID = CGMainDisplayID(), completion: @escaping () -> Void) {
+        stopAnimation()
         self.completion = completion
+        isFinished = false
         startTime = CACurrentMediaTime()
 
         var link: CVDisplayLink?
@@ -47,8 +49,8 @@ final class CRTShutdownView: NSView {
     func stopAnimation() {
         guard let link = displayLink else { return }
         displayLink = nil
+        completion = nil
         CVDisplayLinkStop(link)
-        // Balance the passRetained in startAnimation
         Unmanaged.passUnretained(self).release()
     }
 
@@ -109,9 +111,9 @@ final class CRTShutdownView: NSView {
             if !isFinished {
                 isFinished = true
                 DispatchQueue.main.async { [weak self] in
+                    let onComplete = self?.completion
                     self?.stopAnimation()
-                    self?.completion?()
-                    self?.completion = nil
+                    onComplete?()
                 }
             }
         }
