@@ -27,10 +27,20 @@ final class ConfigManager {
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
         let data = try encoder.encode(config)
-        try data.write(to: configURL)
+        try data.write(to: configURL, options: .atomic)
+    }
+
+    func stopWatching() {
+        if let stream = eventStream {
+            FSEventStreamStop(stream)
+            FSEventStreamInvalidate(stream)
+            FSEventStreamRelease(stream)
+            eventStream = nil
+        }
     }
 
     func watch(onChange: @escaping (StillsideConfig) -> Void) {
+        stopWatching()
         self.onChange = onChange
 
         let dir = configURL.deletingLastPathComponent().path as CFString

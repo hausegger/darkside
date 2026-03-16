@@ -1,15 +1,20 @@
 import AppKit
 
 final class MonitorManager {
-    /// Returns the target screen for the given monitor index.
-    /// -1 = non-active (screen without cursor), 0+ = specific screen by stable index.
-    static func targetScreens(monitorIndex: Int) -> [NSScreen]? {
-        let screens = NSScreen.screens
-        if monitorIndex == StillsideConfig.nonActiveIndex {
+    /// Returns the target screen for the given monitor value.
+    /// -1 = non-active (screen without cursor), positive = CGDirectDisplayID.
+    static func targetScreens(monitor: Int) -> [NSScreen]? {
+        if monitor == StillsideConfig.nonActiveMonitor {
             return nonActiveScreens()
         }
-        guard monitorIndex >= 0 && monitorIndex < screens.count else { return nil }
-        return [screens[monitorIndex]]
+        let displayID = CGDirectDisplayID(monitor)
+        let screens = NSScreen.screens
+        guard let screen = screens.first(where: { screenDisplayID($0) == displayID }) else { return nil }
+        return [screen]
+    }
+
+    static func screenDisplayID(_ screen: NSScreen) -> CGDirectDisplayID {
+        screen.deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? CGDirectDisplayID ?? 0
     }
 
     /// Returns the screen that does NOT contain the mouse cursor.
@@ -22,13 +27,14 @@ final class MonitorManager {
     }
 
     /// Returns a labeled list of all monitors for the picker.
-    static func listMonitors() -> [(index: Int, name: String, label: String)] {
-        var result: [(index: Int, name: String, label: String)] = []
-        result.append((index: StillsideConfig.nonActiveIndex, name: "Non-active", label: "Non-active (screen without cursor)"))
-        for (i, screen) in NSScreen.screens.enumerated() {
+    static func listMonitors() -> [(value: Int, name: String, label: String)] {
+        var result: [(value: Int, name: String, label: String)] = []
+        result.append((value: StillsideConfig.nonActiveMonitor, name: "Non-active", label: "Non-active (screen without cursor)"))
+        for screen in NSScreen.screens {
+            let displayID = screenDisplayID(screen)
             let isPrimary = (screen == NSScreen.main)
             let suffix = isPrimary ? " (primary)" : ""
-            result.append((index: i, name: screen.localizedName, label: "\(screen.localizedName)\(suffix)"))
+            result.append((value: Int(displayID), name: screen.localizedName, label: "\(screen.localizedName)\(suffix)"))
         }
         return result
     }

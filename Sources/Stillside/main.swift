@@ -16,7 +16,7 @@ struct Stillside: ParsableCommand {
     mutating func run() throws {
         var config = ConfigManager.shared.load()
         if let hotkey { config.hotkey = hotkey }
-        if let monitor { config.monitorIndex = monitor }
+        if let monitor { config.monitor = monitor }
 
         startApp(config: config)
     }
@@ -52,10 +52,10 @@ struct Config: ParsableCommand {
         if setMonitor {
             let monitors = MonitorManager.listMonitors()
             let items = monitors.map { m in
-                TerminalPicker.Item(label: m.label, value: m.index)
+                TerminalPicker.Item(label: m.label, value: m.value)
             }
-            if let selected = TerminalPicker.pick(title: "Select monitor:", items: items, initial: config.monitorIndex) {
-                config.monitorIndex = selected
+            if let selected = TerminalPicker.pick(title: "Select monitor:", items: items, initial: config.monitor) {
+                config.monitor = selected
                 changed = true
             }
         }
@@ -68,20 +68,22 @@ struct Config: ParsableCommand {
     }
 
     private func printConfig(_ config: StillsideConfig) {
-        let monitorLabel = config.monitorIndex == StillsideConfig.nonActiveIndex
+        let monitorLabel = config.monitor == StillsideConfig.nonActiveMonitor
             ? "non-active"
-            : String(config.monitorIndex)
+            : String(config.monitor)
         print("hotkey: \(config.hotkey)")
         print("monitor: \(monitorLabel)")
     }
 }
 
+private var appDelegate: AppDelegate?
+
 func startApp(config: StillsideConfig) {
     let app = NSApplication.shared
     app.setActivationPolicy(.accessory)
 
-    let delegate = AppDelegate(config: config)
-    app.delegate = delegate
+    appDelegate = AppDelegate(config: config)
+    app.delegate = appDelegate
 
     app.run()
 }

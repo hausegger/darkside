@@ -29,7 +29,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private func applyConfig(_ config: StillsideConfig) {
         self.config = config
 
-        overlayController = OverlayController(monitorIndex: config.monitorIndex)
+        overlayController?.hide()
+        overlayController = OverlayController(monitor: config.monitor)
 
         hotkeyManager = HotkeyManager { [weak self] in
             self?.overlayController.toggle()
